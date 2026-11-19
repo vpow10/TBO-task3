@@ -4,12 +4,22 @@ FROM python:3.9-slim
 # Ustawiamy katalog roboczy w kontenerze
 WORKDIR /app
 
-# Kopiujemy pliki projektu do kontenera
-COPY . .
 ENV FLASK_ENV=development
 ENV PASSWORD=1qaz@WSX
-# Instalujemy zależności
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Najpierw kopiujemy tylko listy zależności - dzięki temu warstwa z `pip install`
+# jest cache'owana i nie przebudowuje się przy każdej zmianie kodu
+COPY requirements.txt requirements-test.txt ./
+
+# Instalujemy zależności aplikacji oraz testów
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
+
+# Kopiujemy pliki projektu do kontenera
+COPY . .
+
+# Uruchamiamy testy jednostkowe - jeśli którykolwiek test się nie powiedzie,
+# pytest zwraca niezerowy kod wyjścia i `docker build` kończy się błędem
+RUN python -m pytest
 
 # Ustawiamy zmienną środowiskową, aby Flask wiedział, jak uruchomić aplikację
 ENV FLASK_APP=app.py
