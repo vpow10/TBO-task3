@@ -83,8 +83,11 @@ def test_valid_field_values_are_accepted(field, value):
 # 2. Invalid data - missing values, wrong types, wrong formats
 # ---------------------------------------------------------------------------
 
-# Values that are never a meaningful text input.
-EMPTY_LIKE = [None, "", " ", "\t", "\n", "null", "None", "nil", "0", "--"]
+# Values that carry no meaningful content and must be rejected by *every*
+# text field (missing value or whitespace only). Field-specific bad formats
+# such as "null" as a name or "0" as an appNo are covered by the dedicated
+# format tests below, not here - those strings are valid for some fields.
+EMPTY_LIKE = [None, "", " ", "\t", "\n"]
 
 
 @pytest.mark.parametrize("field", TEXT_FIELDS)
